@@ -1,0 +1,42 @@
+
+
+%subject='CONNECT_ma_01'%%VERSUCH!!!!
+%% General settings
+hchs_dir = '/home/share/rawdata/Max/HCHS/analysis';
+main_dir = [hchs_dir, '/fMRI_resting/conn_mat/aroma'];
+target_dir = [hchs_dir, '/fMRI_resting/conn_mat/aroma_mat'];
+
+
+    mkdir(target_dir)
+    cd(main_dir)
+ 
+    
+    %% Sorting Subjects
+            all_subjects_str = ls(main_dir);
+            all_subjects     = strsplit(all_subjects_str);
+            
+            for i = 1:length(all_subjects);
+                     csubj = all_subjects{i};         
+                  if isempty(regexp(csubj, 'sub', 'once')) 
+                     all_subjects{i} = [];
+                 end
+            end 
+    
+    
+    all_subjects_str = ls(main_dir);
+    all_subjects     = strsplit(all_subjects_str);
+    
+    
+    
+                for subjind = 1:length(all_subjects)
+                    
+                       
+                    subject = all_subjects{subjind};
+                    
+                    display(subject);
+                    submat = subject(1:34);
+                    
+                    M = dlmread(subject);
+                   save([target_dir '/' submat],'M');
+                    
+                end 

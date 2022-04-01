@@ -1,0 +1,2151 @@
+%% General settings
+hchs_dir = '/home/maximilian/CSI/new_cohort'
+conn_dir = [hchs_dir, '/fMRI_resting/matrix_200_7']; 
+main_txt_path = [hchs_dir '/social_data'];
+
+
+
+%main_txt_path = [hchs_dir '/social_data'];
+absolute_values = 1;
+mean_default = []
+
+
+
+BCT_path = '/home/maximilian/CSI/matlab/BCT/2019_03_03_BCT';
+addpath(BCT_path);
+ 
+
+ all_thresh = [ 0.5  ];
+ num_thresh = length(all_thresh);
+
+
+
+ cd(conn_dir)       
+ broken_subjects = 'sub-2016203f.mat'
+ 
+
+
+         
+%% Sorting Subjects
+       
+        cd(conn_dir)
+        
+            all_subjects_str = ls(conn_dir);
+            all_subjects = strsplit(all_subjects_str);
+            
+            for i = 1:length(all_subjects);
+                csubj = all_subjects{i}; 
+            if ~isempty(regexp(broken_subjects, csubj, 'once'))
+                all_subjects{i} = [];
+            elseif isempty(regexp(csubj, 'sub', 'once')) 
+                all_subjects{i} = [];
+            end
+            end 
+
+all_subjects = all_subjects(~cellfun('isempty', all_subjects));
+all_subjects = sort(all_subjects);
+all_subjects = all_subjects';
+
+ %% Vorbereiten von Matrizen Datensatz
+
+         id_m = cell(length(all_subjects),1);
+         for subjind = 1:length(all_subjects);
+             csubj = all_subjects{subjind};
+             nsubj=csubj(1:12);   %extract subject name
+             nsubj=strsplit(nsubj);% convert into cell
+             id_m(subjind,:) = nsubj;       
+         end
+         
+       tbl = readtable([main_txt_path '/data_mayer_20210917.csv']) ; 
+
+          id = tbl.DisclosureID;
+          
+         
+         % Angleichen der Nomenklatur
+             str2 = 'sub-';
+         for subjind = 1:length(id)
+             csubj = id{subjind};
+             nsubj=strcat(str2,csubj); % attach "sub"
+             nsubj=strsplit(nsubj); %convert into cell
+             id(subjind,:)=nsubj;            
+         end
+
+%% Angleichen von Matrizen an Age Datensatz         
+         
+         % Index der Subjects die in der Demographie Tabelle aber nicht bei
+         % den Matrizen enthalten sind
+           ex1 = setdiff(id,id_m)  % returns names in id that are not in id_m
+           [~,idx] = ismember(id,ex1) % one's on these rows which resemble index of ex1
+           [idx1] = find(idx) % returns index numbers of ones 
+         
+           id(idx1, :) = []; % delete subjects of id which are not in id_m
+     
+           
+          tbl(idx1, :) = []; %löschen der subjects für die keine Tabelleneinträge existieren
+          [~,idx] = sortrows(tbl(:,3)); % sortieren der Tabelle nach Subject ID
+          tbl = tbl(idx,:);
+          id = sort(id) %  sortieren des Subject ID arrays
+          
+          ex3 = setdiff(id_m,id)  % Subjects die in Matrizen aber nicht in Demographie Tabelle exisiteren  
+          [~,idx3] = ismember(id_m,ex3)
+          [idx3] = find(idx3)
+           
+          id_m(idx3) = [] % %löschen der subjects für die keine Matrizen existieren
+            
+           
+          all_subjects(idx3) = [] % löschen der Matrizen  die nicht im Demographie Datensatz sind
+                    
+
+         setdiff(id_m,id)
+         setdiff(id,id_m)
+
+
+         id_str = importdata([hchs_dir '/id_subjects.txt']) ;
+         ex2 = setdiff(id,id_str);
+         [~,idx] = ismember(id,ex2);
+         [idx2] = find(idx); 
+         id(idx2, :) = [];
+         all_subjects(idx2) = [];
+
+         setdiff(id_str,id);
+         setdiff(id,id_str);
+ 
+
+%% Loop through Subjects
+
+      for ind_thresh = 1:num_thresh;
+              thresh  = all_thresh(ind_thresh);
+              
+                                            
+                      
+                      if absolute_values
+
+                         target_dir_with = [hchs_dir, '/fMRI_resting/results_200_7/mean_36_abs_' num2str(thresh)];
+
+                         target_dir_3d =   [hchs_dir, '/fMRI_resting/results_200_7/mean_36_abs_' num2str(thresh) '/Matrix_3d']
+                      else
+
+                         target_dir_with = [hchs_dir, '/fMRI_resting/results_200_7/mean_36_' num2str(thresh)];
+
+                         target_dir_3d =   [hchs_dir, '/fMRI_resting/results_200_7/mean_36_' num2str(thresh) '/Matrix_3d']
+                             
+                      end
+                      
+                      
+                       
+              for subjind = 1:length(all_subjects)
+
+                            subject = all_subjects{subjind};
+                            load([conn_dir '/' subject]);
+
+                                  if absolute_values
+                                     Mat = abs(Mat);
+                                  else                                    
+                                     Mat = max(Mat,0) ; 
+                                  end  
+                                  Mat = threshold_proportional(Mat, (1-thresh));
+                                  
+                                %% CONNECTIVITY WITHIN NETWORKS     
+                                
+                                %% Global Connectivity
+                                  
+                                  mean_conn = mean(mean(Mat));
+                                  mean_conn_all(subjind,:) = mean_conn;
+                                  
+                                  conn_all(:,:,subjind)  = Mat;
+                                  conn = Mat;
+                                  
+
+
+
+
+                             %%  extracting default net and mean connectivity
+                              
+                           
+                             
+                               default_lh = (74:100);  
+                               default_rh = (182:200); 
+                               %
+                               default_index = [default_lh,default_rh]; % Index right and left
+                               default = Mat(default_index, default_index);
+                                 default_sign1 = default                                                (1,3)
+                                 default_sign1 = default                                   (1,4)
+                                 default_sign1 = default                                   (2,4)
+                                 default_sign1 = default
+                                 default_sign1 = default                                   (3,4)
+                                 default_sign1 = default                                   (1,5)
+                                 default_sign1 = default                                   (4,5)
+                                 default_sign1 = default                                   (1,6)
+                                  default_sign1 = default                                  (3,6)
+                                  default_sign1 = default                                  (4,6)
+                                  default_sign1 = default                                  (5,6)
+                                  default_sign1 = default                                  (1,7)
+                                  default_sign1 = default                                  (2,7)
+                                  default_sign1 = default                                  (3,7)
+                                  default_sign1 = default                                  (4,7)
+                                  default_sign1 = default                                  (5,7)
+                                  default_sign1 = default                                  (1,8)
+                                  default_sign1 = default                                  (3,8)
+                                  default_sign1 = default                                  (4,8)
+                                  default_sign1 = default                                  (5,8)
+                                  default_sign1 = default                                  (6,8)
+                                  default_sign1 = default                                  (1,9)
+                                  default_sign1 = default                                  (2,9)
+                                  default_sign1 = default                                  (3,9)
+                                  default_sign1 = default                                  (4,9)
+                                  default_sign1 = default                                  (5,9)
+                                  default_sign1 = default                                  (6,9)
+                                   default_sign1 = default                                  (4,10)
+                                  default_sign1 = default                                   (5,10)
+                                  default_sign1 = default                                   (6,10)
+                                  default_sign1 = default                                   (7,10)
+                                   default_sign1 = default                                  (8,10)
+                                    default_sign1 = default                                 (9,10)
+                                    default_sign1 = default                                 (2,12)
+                                    default_sign1 = default                                 (3,12)
+                                   default_sign1 = default                                  (4,12)
+                                   default_sign1 = default                                  (5,12)
+                                   default_sign1 = default                                  (6,12)
+                                   default_sign1 = default                                  (7,12)
+                                  default_sign1 = default                                   (9,12)
+                                  default_sign1 = default                                   (10,12)
+                                  default_sign1 = default                                   (2,13)
+                                  default_sign1 = default                                   (3,13)
+                                  default_sign1 = default                                   (4,13)
+                                  default_sign1 = default                                   (5,13)
+                                  default_sign1 = default                                   (6,13)
+                                  default_sign1 = default                                   (7,13)
+                                  default_sign1 = default                                   (8,13)
+                                  default_sign1 = default                                   (9,13)
+                                  default_sign1 = default                                   (10,13)
+                                  default_sign1 = default                                   (12,13)
+                                  default_sign1 = default                                   (1,14)
+                                   default_sign1 = default                                  (2,14)
+                                  default_sign1 = default                                   (3,14)
+                                  default_sign1 = default                                   (4,14)
+                                  default_sign1 = default                                   (5,14)
+                                  default_sign1 = default                                   (6,14)
+                                  default_sign1 = default                                   (7,14)
+                                  default_sign1 = default                                   (10,14)
+                                  default_sign1 = default                                   (13,14)
+                                  default_sign1 = default                                   (4,15)
+                                  default_sign1 = default                                   (7,15)
+                                  default_sign1 = default                                   (9,15)
+                                 default_sign1 = default                                    (10,15)
+                                  default_sign1 = default                                   (11,15)
+                                  default_sign1 = default                                   (4,16)
+                                  default_sign1 = default                                   (5,16)
+                                  default_sign1 = default                                   (6,16)
+                                  default_sign1 = default                                   (7,16)
+                                  default_sign1 = default                                   (9,16)
+                                  default_sign1 = default                                   (10,16)
+                                   default_sign1 = default                                  (13,16)
+                                  default_sign1 = default                                   (15,16)
+                                  default_sign1 = default                                   (4,17)
+                                  default_sign1 = default                                   (6,17)
+                                  default_sign1 = default                                   (7,17)
+                                  default_sign1 = default                                   (10,17)
+                                  default_sign1 = default                                   (14,17)
+                                   default_sign1 = default                                  (15,17)
+                                   default_sign1 = default                                  (16,17)
+                                   default_sign1 = default                                  (4,18)
+                                  default_sign1 = default                                   (5,18)
+                                  default_sign1 = default                                   (6,18)
+                                  default_sign1 = default                                   (7,18)
+                                  default_sign1 = default                                   (9,18)
+                                  default_sign1 = default                                   (10,18)
+                                  default_sign1 = default                                   (14,18)
+                                  default_sign1 = default                                   (16,18)
+                                  default_sign1 = default                                   (17,18)
+                                  default_sign1 = default                                   (3,19)
+                                  default_sign1 = default                                   (4,19)
+                                  default_sign1 = default                                   (6,19)
+                                  default_sign1 = default                                   (7,19)
+                                 default_sign1 = default                                    (9,19)
+                                  default_sign1 = default                                   (10,19)
+                                   default_sign1 = default                                  (13,19)
+                                  default_sign1 = default                                   (14,19)
+                                  default_sign1 = default                                   (15,19)
+                                  default_sign1 = default                                   (16,19)
+                                   default_sign1 = default                                  (17,19)
+                                  default_sign1 = default                                   (18,19)
+                                  default_sign1 = default                                   (1,20)
+                                  default_sign1 = default                                   (2,20)
+                                 default_sign1 = default                                    (3,20)
+                                 default_sign1 = default                                    (4,20)
+                                 default_sign1 = default                                    (5,20)
+                                 default_sign1 = default                                    (6,20)
+                                 default_sign1 = default                                    (7,20)
+                                default_sign1 = default                                     (9,20)
+                                default_sign1 = default                                     (10,20)
+                                default_sign1 = default                                     (2,21)
+                                default_sign1 = default                                     (3,21)
+                                default_sign1 = default                                     (4,21)
+                                 default_sign1 = default                                    (6,21)
+                                 default_sign1 = default                                    (7,21)
+                                  default_sign1 = default                                   (9,21)
+                                 default_sign1 = default                                    (10,21)
+                                 default_sign1 = default                                    (14,21)
+                                 default_sign1 = default                                    (18,21)
+                                default_sign1 = default                                     (19,21)
+                                default_sign1 = default                                     (2,22)
+                                default_sign1 = default                                     (3,22)
+                                default_sign1 = default                                     (4,22)
+                                default_sign1 = default                                     (6,22)
+                                default_sign1 = default                                     (7,22)
+                                default_sign1 = default                                     (10,22)
+                                default_sign1 = default                                     (12,22)
+                                default_sign1 = default                                     (13,22)
+                                default_sign1 = default                                     (14,22)
+                                default_sign1 = default                                     (16,22)
+                                default_sign1 = default                                     (18,22)
+                                default_sign1 = default                                     (19,22)
+                                default_sign1 = default                                     (21,22)
+                                default_sign1 = default                                     (10,23)
+                                default_sign1 = default                                     (11,23)
+                                default_sign1 = default                                     (13,23)
+                                default_sign1 = default                                     (15,23)
+                               default_sign1 = default                                      (16,23)
+                               default_sign1 = default                                      (17,23)
+                               default_sign1 = default                                      (18,23)
+                               default_sign1 = default                                      (19,23)
+                                default_sign1 = default                                     (20,23)
+                               default_sign1 = default                                      (21,23)
+                               default_sign1 = default                                      (22,23)
+                               default_sign1 = default                                      (1,24)
+                               default_sign1 = default                                      (10,24)
+                               default_sign1 = default                                      (11,24)
+                               default_sign1 = default                                      (12,24)
+                                default_sign1 = default                                     (13,24)
+                                default_sign1 = default                                     (14,24)
+                               default_sign1 = default                                      (15,24)
+                               default_sign1 = default                                      (16,24)
+                               default_sign1 = default                                      (17,24)
+                               default_sign1 = default                                      (18,24)
+                               default_sign1 = default                                      (19,24)
+                               default_sign1 = default                                      (20,24)
+                               default_sign1 = default                                      (21,24)
+                               default_sign1 = default                                      (22,24)
+                               default_sign1 = default                                      (10,25)
+                               default_sign1 = default                                      (15,25)
+                               default_sign1 = default                                      (16,25)
+                               default_sign1 = default                                      (17,25)
+                               default_sign1 = default                                      (19,25)
+                               default_sign1 = default                                      (1,26)
+                               default_sign1 = default                                      (2,26)
+                               default_sign1 = default                                      (3,26)
+                                default_sign1 = default                                     (4,26)
+                               default_sign1 = default                                      (5,26)
+                               default_sign1 = default                                      (6,26)
+                              default_sign1 = default                                       (8,26)
+                               default_sign1 = default                                      (10,26)
+                               default_sign1 = default                                      (11,26)
+                               default_sign1 = default                                      (12,26)
+                               default_sign1 = default                                      (13,26)
+                               default_sign1 = default                                      (14,26)
+                               default_sign1 = default                                      (15,26)
+                               default_sign1 = default                                      (16,26)
+                              default_sign1 = default                                       (17,26)
+                               default_sign1 = default                                      (18,26)
+                               default_sign1 = default                                      (19,26)
+                               default_sign1 = default                                      (20,26)
+                               default_sign1 = default                                      (21,26)
+                               default_sign1 = default                                      (22,26)
+                               default_sign1 = default                                      (1,27)
+                               default_sign1 = default                                      (3,27)
+                               default_sign1 = default                                      (7,27)
+                               default_sign1 = default                                      (9,27)
+                               default_sign1 = default                                      (12,27)
+                                default_sign1 = default                                     (13,27)
+                                default_sign1 = default                                     (14,27)
+                               default_sign1 = default                                      (15,27)
+                               default_sign1 = default                                      (16,27)
+                               default_sign1 = default                                      (17,27)
+                               default_sign1 = default                                      (18,27)
+                               default_sign1 = default                                      (19,27)
+                               default_sign1 = default                                      (20,27)
+                               default_sign1 = default                                      (21,27)
+                               default_sign1 = default                                      (22,27)
+                               default_sign1 = default                                      (23,27)
+                               default_sign1 = default                                      (24,27)
+                               default_sign1 = default                                      (26,27)
+                               default_sign1 = default                                      (7,28)
+                               default_sign1 = default                                      (10,28)
+                               default_sign1 = default                                      (11,28)
+                               default_sign1 = default                                      (13,28)
+                               default_sign1 = default                                      (14,28)
+                              default_sign1 = default                                       (15,28)
+                              default_sign1 = default                                       (16,28)
+                              default_sign1 = default                                       (17,28)
+                              default_sign1 = default                                       (18,28)
+                              default_sign1 = default                                       (19,28)
+                              default_sign1 = default                                       (20,28)
+                              default_sign1 = default                                       (21,28)
+                              default_sign1 = default                                       (22,28)
+                              default_sign1 = default                                       (23,28)
+                               default_sign1 = default                                      (24,28)
+                              default_sign1 = default                                       (25,28)
+                              default_sign1 = default                                      (26,28)
+                              default_sign1 = default                                      (27,28)
+                             default_sign1 = default                                       (15,29)
+                              default_sign1 = default                                      (16,29)
+                              default_sign1 = default                                      (17,29)
+                              default_sign1 = default                                      (18,29)
+                              default_sign1 = default                                      (19,29)
+                              default_sign1 = default                                      (20,29)
+                              default_sign1 = default                                      (21,29)
+                              default_sign1 = default                                      (22,29)
+                              default_sign1 = default                                      (23,29)
+                              default_sign1 = default                                      (24,29)
+                              default_sign1 = default                                      (25,29)
+                              default_sign1 = default                                      (26,29)
+                              default_sign1 = default                                      (28,29)
+                              default_sign1 = default                                      (6,30)
+                              default_sign1 = default                                      (7,30)
+                              default_sign1 = default                                      (9,30)
+                              default_sign1 = default                                      (10,30)
+                              default_sign1 = default                                      (13,30)
+                              default_sign1 = default                                      (15,30)
+                              default_sign1 = default                                      (16,30)
+                              default_sign1 = default                                      (17,30)
+                              default_sign1 = default                                      (18,30)
+                              default_sign1 = default                                      (19,30)
+                              default_sign1 = default                                      (20,30)
+                              default_sign1 = default                                      (21,30)
+                              default_sign1 = default                                      (22,30)
+                              default_sign1 = default                                      (23,30)
+                              default_sign1 = default                                      (24,30)
+                              default_sign1 = default                                      (25,30)
+                              default_sign1 = default                                      (26,30)
+                              default_sign1 = default                                      (27,30)
+                              default_sign1 = default                                      (29,30)
+                              default_sign1 = default                                      (20,31)
+                              default_sign1 = default                                      (22,31)
+                              default_sign1 = default                                      (23,31)
+                              default_sign1 = default                                      (24,31)
+                              default_sign1 = default                                      (25,31)
+                              default_sign1 = default                                      (26,31)
+                              default_sign1 = default                                      (28,31)
+                              default_sign1 = default                                      (29,31)
+                              default_sign1 = default                                      (30,31)
+                              default_sign1 = default                                      (17,32)
+                              default_sign1 = default                                       (18,32)
+                              default_sign1 = default                                       (19,32)
+                              default_sign1 = default                                       (20,32)
+                              default_sign1 = default                                       (21,32)
+                              default_sign1 = default                                       (22,32)
+                              default_sign1 = default                                       (23,32)
+                              default_sign1 = default                                       (24,32)
+                              default_sign1 = default                                       (25,32)
+                              default_sign1 = default                                       (26,32)
+                              default_sign1 = default                                       (28,32)
+                              default_sign1 = default                                       (29,32)
+                              default_sign1 = default                                       (30,32)
+                              default_sign1 = default                                       (31,32)
+                              default_sign1 = default                                       (16,33)
+                               default_sign1 = default                                      (17,33)
+                               default_sign1 = default                                      (18,33)
+                               default_sign1 = default                                      (19,33)
+                             default_sign1 = default                                        (20,33)
+                             default_sign1 = default                                        (21,33)
+                              default_sign1 = default                                       (22,33)
+                             default_sign1 = default                                        (23,33)
+                            default_sign1 = default                                         (24,33)
+                           default_sign1 = default                                          (25,33)
+                            default_sign1 = default                                         (26,33)
+                           default_sign1 = default                                          (28,33)
+                           default_sign1 = default                                          (29,33)
+                          default_sign1 = default                                           (30,33)
+                           default_sign1 = default                                          (32,33)
+                           default_sign1 = default                                          (13,34)
+                            default_sign1 = default                                         (14,34)
+                            default_sign1 = default                                         (15,34)
+                            default_sign1 = default                                         (16,34)
+                            default_sign1 = default                                         (17,34)
+                            default_sign1 = default                                         (18,34)
+                            default_sign1 = default                                         (19,34)
+                            default_sign1 = default                                         (20,34)
+                            default_sign1 = default                                         (21,34)
+                            default_sign1 = default                                         (22,34)
+                             default_sign1 = default                                        (23,34)
+                             default_sign1 = default                                        (24,34)
+                             default_sign1 = default                                        (25,34)
+                             default_sign1 = default                                        (26,34)
+                             default_sign1 = default                                        (28,34)
+                             default_sign1 = default                                        (29,34)
+                             default_sign1 = default                                        (30,34)
+                             default_sign1 = default                                        (31,34)
+                             default_sign1 = default                                        (32,34)
+                             default_sign1 = default                                        (33,34)
+                             default_sign1 = default                                        (13,35)
+                             default_sign1 = default                                        (15,35)
+                             default_sign1 = default                                        (16,35)
+                             default_sign1 = default                                        (17,35)
+                             default_sign1 = default                                        (18,35)
+                             default_sign1 = default                                        (19,35)
+                             default_sign1 = default                                        (20,35)
+                             default_sign1 = default                                        (21,35)
+                             default_sign1 = default                                        (22,35)
+                             default_sign1 = default                                        (23,35)
+                             default_sign1 = default                                        (25,35)
+                             default_sign1 = default                                        (28,35)
+                             default_sign1 = default                                        (29,35)
+                             default_sign1 = default                                        (30,35)
+                                                                    (31,35)
+                                                                    (32,35)
+                                                                    (33,35)
+                                                                    (34,35)
+                                                                    (6,36)
+                                                                    (7,36)
+                                                                    (9,36)
+                                                                    (11,36)
+                                                                    (13,36)
+                                                                    (15,36)
+                                                                    (16,36)
+                                                                    (17,36)
+                                                                    (18,36)
+                                                                    (19,36)
+                                                                    (20,36)
+                                                                    (21,36)
+                                                                    (22,36)
+                                                                    (23,36)
+                                                                    (24,36)
+                                                                    (26,36)
+                                                                    (28,36)
+                                                                    (32,36)
+                                                                    (33,36)
+                                                                    (34,36)
+                                                                    (35,36)
+                                                                    (10,37)
+                                                                    (11,37)
+                                                                    (12,37)
+                                                                    (13,37)
+                                                                    (14,37)
+                                                                    (15,37)
+                                                                    (16,37)
+                                                                    (17,37)
+                                                                    (18,37)
+                                                                    (19,37)
+                                                                    (20,37)
+                                                                    (21,37)
+                                                                    (22,37)
+                                                                    (23,37)
+                                                                    (24,37)
+                                                                    (25,37)
+                                                                    (26,37)
+                                                                    (28,37)
+                                                                    (29,37)
+                                                                    (30,37)
+                                                                    (7,38)
+                                                                    (9,38)
+                                                                    (10,38)
+                                                                    (11,38)
+                                                                    (12,38)
+                                                                    (13,38)
+                                                                    (14,38)
+                                                                    (15,38)
+                                                                    (16,38)
+                                                                    (17,38)
+                                                                    (18,38)
+                                                                    (19,38)
+                                                                    (20,38)
+                                                                    (21,38)
+                                                                    (22,38)
+                                                                    (23,38)
+                                                                    (24,38)
+                                                                    (26,38)
+                                                                    (28,38)
+                                                                    (34,38)
+                                                                    (36,38)
+                                                                    (37,38)
+                                                                    (13,39)
+                                                                    (15,39)
+                                                                    (16,39)
+                                                                    (17,39)
+                                                                    (18,39)
+                                                                    (19,39)
+                                                                    (20,39)
+                                                                    (21,39)
+                                                                    (22,39)
+                                                                    (26,39)
+                                                                    (3,40)
+                                                                    (4,40)
+                                                                    (5,40)
+                                                                    (6,40)
+                                                                    (7,40)
+                                                                    (9,40)
+                                                                    (10,40)
+                                                                    (11,40)
+                                                                    (12,40)
+                                                                    (13,40)
+                                                                    (14,40)
+                                                                    (15,40)
+                                                                    (16,40)
+                                                                    (17,40)
+                                                                    (18,40)
+                                                                    (19,40)
+                                                                    (20,40)
+                                                                    (21,40)
+                                                                    (22,40)
+                                                                    (23,40)
+                                                                    (24,40)
+                                                                    (25,40)
+                                                                    (26,40)
+                                                                    (27,40)
+                                                                    (28,40)
+                                                                    (34,40)
+                                                                    (35,40)
+                                                                    (36,40)
+                                                                    (37,40)
+                                                                    (2,41)
+                                                                    (3,41)
+                                                                    (4,41)
+                                                                    (5,41)
+                                                                    (6,41)
+                                                                    (7,41)
+                                                                    (8,41)
+                                                                    (9,41)
+                                                                    (10,41)
+                                                                    (11,41)
+                                                                    (12,41)
+                                                                    (13,41)
+                                                                    (14,41)
+                                                                    (15,41)
+                                                                    (16,41)
+                                                                    (17,41)
+                                                                    (18,41)
+                                                                    (19,41)
+                                                                    (20,41)
+                                                                    (21,41)
+                                                                    (22,41)
+                                                                    (23,41)
+                                                                    (24,41)
+                                                                    (25,41)
+                                                                    (26,41)
+                                                                    (27,41)
+                                                                    (28,41)
+                                                                    (34,41)
+                                                                    (35,41)
+                                                                    (36,41)
+                                                                    (37,41)
+                                                                    (2,42)
+                                                                    (3,42)
+                                                                    (4,42)
+                                                                    (5,42)
+                                                                    (6,42)
+                                                                    (7,42)
+                                                                    (9,42)
+                                                                    (10,42)
+                                                                    (11,42)
+                                                                    (12,42)
+                                                                    (13,42)
+                                                                    (14,42)
+                                                                    (15,42)
+                                                                    (16,42)
+                                                                    (17,42)
+                                                                    (18,42)
+                                                                    (19,42)
+                                                                    (20,42)
+                                                                    (21,42)
+                                                                    (22,42)
+                                                                    (23,42)
+                                                                    (24,42)
+                                                                    (25,42)
+                                                                    (26,42)
+                                                                    (27,42)
+                                                                    (28,42)
+                                                                    (31,42)
+                                                                    (32,42)
+                                                                    (33,42)
+                                                                    (34,42)
+                                                                    (35,42)
+                                                                    (1,43)
+                                                                    (2,43)
+                                                                    (3,43)
+                                                                    (4,43)
+                                                                    (5,43)
+                                                                    (6,43)
+                                                                    (7,43)
+                                                                    (8,43)
+                                                                    (9,43)
+                                                                    (10,43)
+                                                                    (11,43)
+                                                                    (12,43)
+                                                                    (13,43)
+                                                                    (14,43)
+                                                                    (15,43)
+                                                                    (16,43)
+                                                                    (17,43)
+                                                                    (18,43)
+                                                                    (19,43)
+                                                                    (20,43)
+                                                                    (21,43)
+                                                                    (22,43)
+                                                                    (23,43)
+                                                                    (24,43)
+                                                                    (25,43)
+                                                                    (26,43)
+                                                                    (27,43)
+                                                                    (28,43)
+                                                                    (31,43)
+                                                                    (32,43)
+                                                                    (33,43)
+                                                                    (34,43)
+                                                                    (35,43)
+                                                                    (36,43)
+                                                                    (37,43)
+                                                                    (41,43)
+                                                                    (1,44)
+                                                                    (2,44)
+                                                                    (3,44)
+                                                                    (4,44)
+                                                                    (6,44)
+                                                                    (7,44)
+                                                                    (9,44)
+                                                                    (10,44)
+                                                                    (11,44)
+                                                                    (13,44)
+                                                                    (14,44)
+                                                                    (15,44)
+                                                                    (16,44)
+                                                                    (17,44)
+                                                                    (18,44)
+                                                                    (19,44)
+                                                                    (20,44)
+                                                                    (21,44)
+                                                                    (22,44)
+                                                                    (23,44)
+                                                                    (24,44)
+                                                                    (25,44)
+                                                                    (26,44)
+                                                                    (38,44)
+                                                                    (40,44)
+                                                                    (41,44)
+                                                                    (42,44)
+                                                                    (43,44)
+                                                                    (1,45)
+                                                                    (2,45)
+                                                                    (3,45)
+                                                                    (4,45)
+                                                                    (5,45)
+                                                                    (6,45)
+                                                                    (7,45)
+                                                                    (8,45)
+                                                                    (9,45)
+                                                                    (10,45)
+                                                                    (11,45)
+                                                                    (12,45)
+                                                                    (13,45)
+                                                                    (14,45)
+                                                                    (15,45)
+                                                                    (16,45)
+                                                                    (17,45)
+                                                                    (18,45)
+                                                                    (19,45)
+                                                                    (20,45)
+                                                                    (21,45)
+                                                                    (22,45)
+                                                                    (23,45)
+                                                                    (24,45)
+                                                                    (25,45)
+                                                                    (26,45)
+                                                                    (27,45)
+                                                                    (36,45)
+                                                                    (37,45)
+                                                                    (38,45)
+                                                                    (40,45)
+                                                                    (41,45)
+                                                                    (42,45)
+                                                                    (43,45)
+                                                                    (1,46)
+                                                                    (2,46)
+                                                                    (3,46)
+                                                                    (4,46)
+                                                                    (5,46)
+                                                                    (6,46)
+                                                                    (7,46)
+                                                                    (8,46)
+                                                                    (9,46)
+                                                                    (10,46)
+                                                                    (11,46)
+                                                                    (12,46)
+                                                                    (13,46)
+                                                                    (14,46)
+                                                                    (15,46)
+                                                                    (16,46)
+                                                                    (17,46)
+                                                                    (18,46)
+                                                                    (19,46)
+                                                                    (20,46)
+                                                                    (21,46)
+                                                                    (22,46)
+                                                                    (23,46)
+                                                                    (24,46)
+                                                                    (25,46)
+                                                                    (26,46)
+                                                                    (27,46)
+                                                                    (29,46)
+                                                                    (31,46)
+                                                                    (32,46)
+                                                                    (33,46)
+                                                                    (34,46)
+                                                                    (35,46)
+                                                                    (36,46)
+                                                                    (38,46)
+                                                                    (40,46)
+                                                                    (41,46)
+                                                                    (42,46)
+                                                                    (43,46)
+
+
+
+                               
+
+                               
+       
+                               default_all(:,:,subjind)  = default; % 3D matrix of all subjects
+                               
+                               mean_default = tril(default); % for calculating mean only half of the matrix 
+                               mean_default(mean_default==0) = nan; % for calculating mean changing zeros to nan
+
+                              % s=mean(half_default(logical(triu(ones(size(half_default))))))
+
+                               mean_default = mean(mean_default,'omitnan'); % calculating mean for each column
+                               mean_default = mean_default(~isnan(mean_default)); % excluding columns with nan result 
+                               mean_default = mean(mean_default); % calculating mean of the columns 
+                                                                                          
+                               mean_default_all(subjind,:) = mean_default; % mean values of all subjects
+                               
+                               [~, mod] = modularity_und(default);
+                               modul_default(subjind,:) = mod;
+
+
+                              %% extracting Dorsal net and mean connectivity 
+
+
+                               dorsal_lh = (31:43); % 
+                               dorsal_rh = (135:147); 
+                               %
+                               dorsal_index = [ dorsal_lh, dorsal_rh]; %
+                               dorsal = Mat(dorsal_index, dorsal_index);
+(1,2)
+(1,3)
+(2,3)
+(1,4)
+(2,4)
+(3,4)
+(1,5)
+(2,5)
+(4,5)
+(1,6)
+(4,6)
+(1,7)
+(2,7)
+(3,7)
+(4,7)
+(1,8)
+(3,8)
+(4,8)
+(1,9)
+(2,9)
+(3,9)
+(4,9)
+(7,9)
+(1,10)
+(3,10)
+(4,10)
+(7,10)
+(1,11)
+(2,11)
+(3,11)
+(6,11)
+(7,11)
+(8,11)
+(9,11)
+(10,11)
+(1,12)
+(2,12)
+(3,12)
+(6,12)
+(7,12)
+(8,12)
+(9,12)
+(10,12)
+(1,13)
+(2,13)
+(3,13)
+(4,13)
+(5,13)
+(6,13)
+(7,13)
+(8,13)
+(9,13)
+(10,13)
+(11,13)
+(12,13)
+(3,14)
+(4,14)
+(5,14)
+(6,14)
+(7,14)
+(8,14)
+(9,14)
+(10,14)
+(11,14)
+(12,14)
+(13,14)
+(3,15)
+(4,15)
+(6,15)
+(8,15)
+(10,15)
+(11,15)
+(12,15)
+(14,15)
+(1,16)
+(2,16)
+(3,16)
+(4,16)
+(5,16)
+(6,16)
+(7,16)
+(8,16)
+(9,16)
+(10,16)
+(11,16)
+(12,16)
+(13,16)
+(14,16)
+(15,16)
+(1,17)
+(2,17)
+(3,17)
+(4,17)
+(5,17)
+(6,17)
+(7,17)
+(8,17)
+(9,17)
+(10,17)
+(11,17)
+(12,17)
+(13,17)
+(14,17)
+(15,17)
+(16,17)
+(1,18)
+(2,18)
+(3,18)
+(4,18)
+(5,18)
+(6,18)
+(7,18)
+(8,18)
+(9,18)
+(10,18)
+(11,18)
+(12,18)
+(13,18)
+(14,18)
+(15,18)
+(16,18)
+(17,18)
+(1,19)
+(2,19)
+(3,19)
+(4,19)
+(5,19)
+(6,19)
+(7,19)
+(8,19)
+(9,19)
+(10,19)
+(11,19)
+(12,19)
+(13,19)
+(14,19)
+(16,19)
+(18,19)
+(1,20)
+(2,20)
+(3,20)
+(4,20)
+(5,20)
+(6,20)
+(7,20)
+(8,20)
+(9,20)
+(10,20)
+(11,20)
+(12,20)
+(13,20)
+(14,20)
+(17,20)
+(18,20)
+(1,21)
+(2,21)
+(3,21)
+(4,21)
+(5,21)
+(6,21)
+(7,21)
+(8,21)
+(9,21)
+(10,21)
+(11,21)
+(12,21)
+(13,21)
+(14,21)
+(18,21)
+(1,22)
+(2,22)
+(3,22)
+(4,22)
+(5,22)
+(6,22)
+(7,22)
+(8,22)
+(9,22)
+(10,22)
+(11,22)
+(12,22)
+(13,22)
+(14,22)
+(16,22)
+(17,22)
+(18,22)
+(19,22)
+(20,22)
+(1,23)
+(2,23)
+(3,23)
+(4,23)
+(5,23)
+(6,23)
+(7,23)
+(8,23)
+(9,23)
+(10,23)
+(11,23)
+(12,23)
+(13,23)
+(14,23)
+(18,23)
+(19,23)
+(1,24)
+(2,24)
+(3,24)
+(4,24)
+(5,24)
+(6,24)
+(7,24)
+(8,24)
+(9,24)
+(10,24)
+(11,24)
+(12,24)
+(13,24)
+(14,24)
+(15,24)
+(19,24)
+(21,24)
+(22,24)
+(23,24)
+(1,25)
+(2,25)
+(3,25)
+(4,25)
+(5,25)
+(6,25)
+(7,25)
+(8,25)
+(9,25)
+(10,25)
+(11,25)
+(12,25)
+(13,25)
+(14,25)
+(15,25)
+(19,25)
+(21,25)
+(22,25)
+(23,25)
+(1,26)
+(2,26)
+(3,26)
+(4,26)
+(5,26)
+(6,26)
+(7,26)
+(8,26)
+(9,26)
+(10,26)
+(11,26)
+(12,26)
+(13,26)
+(14,26)
+(15,26)
+(16,26)
+(17,26)
+(18,26)
+(19,26)
+(20,26)
+(22,26)
+(25,26)
+                               
+    
+                      
+                               dorsal_all(:,:,subjind)  = dorsal;
+                               
+                               mean_dorsal = tril(dorsal);
+                               mean_dorsal(mean_dorsal==0) = nan;
+
+                              % s=mean(half_default(logical(triu(ones(size(half_default))))))
+
+                               mean_dorsal = mean(mean_dorsal,'omitnan');
+                               mean_dorsal = mean_dorsal(~isnan(mean_dorsal));
+                               mean_dorsal = mean(mean_dorsal);
+                               mean_dorsal_all(subjind,:) = mean_dorsal;
+                               
+                               
+                               [~, mod] = modularity_und(dorsal);
+                               modul_dorsal(subjind,:) = mod;
+
+                             %%  extracting SalVen net and mean connectivity     
+
+
+                               salven_lh = (44:54); % 
+                               salven_rh = (148:158); 
+                               %
+                               salven_index = [salven_lh,salven_rh]; %
+                               salven = Mat(salven_index, salven_index);
+                               
+(1,3)
+(2,3)
+(1,4)
+(2,4)
+(3,4)
+(1,5)
+(2,5)
+(3,5)
+(4,5)
+(2,6)
+(3,6)
+(4,6)
+(5,6)
+(2,7)
+(3,7)
+(4,7)
+(5,7)
+(2,8)
+(3,8)
+(4,8)
+(5,8)
+(6,8)
+(7,8)
+(4,9)
+(5,9)
+(6,9)
+(7,9)
+(8,9)
+(1,10)
+(2,10)
+(3,10)
+(4,10)
+(5,10)
+(6,10)
+(7,10)
+(8,10)
+(9,10)
+(4,11)
+(5,11)
+(6,11)
+(7,11)
+(10,11)
+(8,12)
+(9,12)
+(10,12)
+(11,12)
+(8,13)
+(9,13)
+(10,13)
+(11,13)
+(12,13)
+(4,14)
+(5,14)
+(7,14)
+(8,14)
+(9,14)
+(10,14)
+(11,14)
+(12,14)
+(13,14)
+(2,15)
+(3,15)
+(4,15)
+(5,15)
+(7,15)
+(8,15)
+(9,15)
+(10,15)
+(11,15)
+(12,15)
+(8,16)
+(9,16)
+(10,16)
+(11,16)
+(14,16)
+(15,16)
+(7,17)
+(8,17)
+(9,17)
+(10,17)
+(11,17)
+(14,17)
+(15,17)
+(3,18)
+(8,18)
+(9,18)
+(10,18)
+(11,18)
+(12,18)
+(13,18)
+(14,18)
+(16,18)
+(17,18)
+(2,19)
+(3,19)
+(4,19)
+(8,19)
+(9,19)
+(10,19)
+(11,19)
+(12,19)
+(14,19)
+(15,19)
+(16,19)
+(17,19)
+(18,19)
+(1,20)
+(2,20)
+(3,20)
+(4,20)
+(5,20)
+(6,20)
+(7,20)
+(8,20)
+(9,20)
+(10,20)
+(11,20)
+(15,20)
+(16,20)
+(17,20)
+(19,20)
+(1,21)
+(2,21)
+(3,21)
+(4,21)
+(5,21)
+(6,21)
+(7,21)
+(8,21)
+(9,21)
+(10,21)
+(11,21)
+(12,21)
+(13,21)
+(14,21)
+(15,21)
+(16,21)
+(17,21)
+(18,21)
+(19,21)
+(20,21)
+(1,22)
+(2,22)
+(3,22)
+(4,22)
+(5,22)
+(6,22)
+(7,22)
+(8,22)
+(9,22)
+(10,22)
+(11,22)
+(16,22)
+(17,22)
+(18,22)
+(19,22)
+(21,22)
+
+                                                                                                                      
+                               
+                               salven_all(:,:,subjind)  = salven;
+                               
+                               mean_salven = tril(salven);
+                               mean_salven(mean_salven==0) = nan;
+
+                               mean_salven = mean(mean_salven,'omitnan');
+                               mean_salven = mean_salven(~isnan(mean_salven));
+                               mean_salven = mean(mean_salven);
+                               mean_salven_all(subjind,:) = mean_salven;
+
+
+                               [~, mod] = modularity_und(salven);
+                               modul_salven(subjind,:) = mod;
+
+
+                            %%  extracting SomMot net and mean connectivity     
+
+
+                               sommot_lh = (15:30); % 
+                               sommot_rh = (116:134); 
+                               %
+                               sommot_index = [ sommot_lh, sommot_rh]; %
+                               sommot = Mat(sommot_index, sommot_index);
+                               
+
+
+                               
+   
+                               
+                                                                                          
+                               
+                              
+                               
+                               sommot_all(:,:,subjind)  = sommot;
+                               
+                               mean_sommot = tril(sommot);
+                               mean_sommot(mean_sommot==0) = nan;
+
+                              % s=mean(half_default(logical(triu(ones(size(half_default))))))
+
+                               mean_sommot = mean(mean_sommot,'omitnan');
+                               mean_sommot = mean_sommot(~isnan(mean_sommot));
+                               mean_sommot = mean(mean_sommot);
+                               mean_sommon_all(subjind,:) = mean_sommot;
+                               
+                               
+                               [~, mod] = modularity_und(sommot);
+                               modul_sommot(subjind,:) = mod;
+
+
+                            %%  extracting Cont net and mean connectivity     
+
+
+                               cont_lh = (61:73); % 
+                               cont_rh = (165:181); 
+                               %
+                               cont_index = [cont_lh,cont_rh]; %
+                               cont = Mat(cont_index, cont_index);
+                               (1,3)
+(2,3)
+(1,4)
+(2,4)
+(3,4)
+(1,5)
+(2,5)
+(1,6)
+(2,6)
+(3,6)
+(4,6)
+(5,6)
+(1,7)
+(2,7)
+(3,7)
+(4,7)
+(2,8)
+(3,8)
+(4,8)
+(2,9)
+(3,9)
+(4,9)
+(7,9)
+(2,10)
+(3,10)
+(4,10)
+(7,10)
+(3,11)
+(4,11)
+(5,11)
+(6,11)
+(7,11)
+(8,11)
+(9,11)
+(10,11)
+(3,12)
+(6,12)
+(7,12)
+(8,12)
+(1,14)
+(2,14)
+(3,14)
+(7,14)
+(8,14)
+(9,14)
+(10,14)
+(11,14)
+(1,15)
+(2,15)
+(3,15)
+(4,15)
+(5,15)
+(6,15)
+(7,15)
+(8,15)
+(9,15)
+(10,15)
+(11,15)
+(12,15)
+(14,15)
+(1,16)
+(2,16)
+(3,16)
+(4,16)
+(5,16)
+(6,16)
+(7,16)
+(8,16)
+(9,16)
+(10,16)
+(11,16)
+(12,16)
+(14,16)
+(2,17)
+(3,17)
+(7,17)
+(8,17)
+(9,17)
+(10,17)
+(14,17)
+(15,17)
+(16,17)
+(1,18)
+(2,18)
+(3,18)
+(6,18)
+(7,18)
+(8,18)
+(9,18)
+(10,18)
+(11,18)
+(12,18)
+(13,18)
+(14,18)
+(15,18)
+(16,18)
+(17,18)
+(1,19)
+(2,19)
+(3,19)
+(7,19)
+(9,19)
+(10,19)
+(11,19)
+(12,19)
+(14,19)
+(15,19)
+(16,19)
+(17,19)
+(18,19)
+(1,20)
+(2,20)
+(3,20)
+(6,20)
+(7,20)
+(8,20)
+(9,20)
+(10,20)
+(11,20)
+(12,20)
+(14,20)
+(15,20)
+(16,20)
+(17,20)
+(18,20)
+(19,20)
+(1,21)
+(2,21)
+(3,21)
+(6,21)
+(7,21)
+(8,21)
+(9,21)
+(10,21)
+(11,21)
+(12,21)
+(14,21)
+(15,21)
+(16,21)
+(17,21)
+(18,21)
+(20,21)
+(1,22)
+(2,22)
+(3,22)
+(4,22)
+(5,22)
+(6,22)
+(7,22)
+(8,22)
+(9,22)
+(10,22)
+(11,22)
+(12,22)
+(15,22)
+(16,22)
+(17,22)
+(18,22)
+(1,23)
+(2,23)
+(3,23)
+(4,23)
+(5,23)
+(6,23)
+(7,23)
+(8,23)
+(9,23)
+(10,23)
+(11,23)
+(12,23)
+(14,23)
+(15,23)
+(16,23)
+(17,23)
+(18,23)
+(1,24)
+(2,24)
+(3,24)
+(4,24)
+(5,24)
+(6,24)
+(7,24)
+(8,24)
+(9,24)
+(10,24)
+(11,24)
+(12,24)
+(15,24)
+(16,24)
+(17,24)
+(18,24)
+(23,24)
+(1,25)
+(2,25)
+(3,25)
+(4,25)
+(5,25)
+(6,25)
+(7,25)
+(8,25)
+(9,25)
+(10,25)
+(11,25)
+(12,25)
+(15,25)
+(16,25)
+(17,25)
+(18,25)
+(1,26)
+(2,26)
+(3,26)
+(4,26)
+(5,26)
+(6,26)
+(7,26)
+(8,26)
+(9,26)
+(10,26)
+(11,26)
+(12,26)
+(13,26)
+(14,26)
+(15,26)
+(17,26)
+(18,26)
+(19,26)
+(20,26)
+(21,26)
+(22,26)
+(23,26)
+(24,26)
+(25,26)
+(1,27)
+(2,27)
+(3,27)
+(6,27)
+(7,27)
+(8,27)
+(9,27)
+(10,27)
+(11,27)
+(12,27)
+(18,27)
+(20,27)
+(23,27)
+(7,28)
+(11,28)
+(12,28)
+(1,29)
+(2,29)
+(3,29)
+(4,29)
+(5,29)
+(6,29)
+(7,29)
+(8,29)
+(9,29)
+(10,29)
+(11,29)
+(12,29)
+(18,29)
+(20,29)
+(21,29)
+(22,29)
+(23,29)
+(24,29)
+(25,29)
+(26,29)
+(27,29)
+(1,30)
+(2,30)
+(3,30)
+(4,30)
+(5,30)
+(6,30)
+(7,30)
+(8,30)
+(9,30)
+(10,30)
+(11,30)
+(12,30)
+(13,30)
+(17,30)
+(18,30)
+(19,30)
+(20,30)
+(22,30)
+(23,30)
+(26,30)
+(29,30)
+
+                               cont_all(:,:,subjind)  = cont;
+                               
+                               
+                               mean_cont = tril(cont);
+                               mean_cont(mean_cont==0) = nan;
+
+                              % s=mean(half_default(logical(triu(ones(size(half_default))))))
+
+                               mean_cont = mean(mean_cont,'omitnan');
+                               mean_cont = mean_cont(~isnan(mean_sommot));
+                               mean_cont = mean(mean_cont);
+                               mean_cont_all(subjind,:) = mean_cont;
+
+                               [~, mod] = modularity_und(cont);
+                               modul_cont(subjind,:) = mod;
+
+
+
+                           %%  extracting Vis net and mean connectivity     
+
+
+                               vis_lh = (1:14); % 
+                               vis_rh = (101:115); 
+                               %
+                               vis_index = [vis_lh,vis_rh]; %
+                               vis = Mat(vis_index, vis_index);
+
+                                 
+                               vis_all(:,:,subjind)  = vis;
+                               
+                               mean_vis = tril(vis);
+                               mean_vis(mean_vis==0) = nan;
+
+                              % s=mean(half_default(logical(triu(ones(size(half_default))))))
+
+                               mean_vis = mean(mean_vis,'omitnan');
+                               mean_vis = mean_vis(~isnan(mean_vis));
+                               mean_vis = mean(mean_vis);
+                               mean_vis_all(subjind,:) = mean_vis;
+                               
+                               
+                               
+
+                               [~, mod] = modularity_und(vis);
+                               modul_vis(subjind,:) = mod;
+
+                          %%  extracting Limb net and mean connectivity     
+
+
+                               limb_lh = (55:60); % 
+                               limb_rh = (159:164); 
+                               %
+                               limb_index = [limb_lh,limb_rh]; %
+                               limb = Mat(limb_index, limb_index);
+                               limb_all(:,:,subjind)  = limb;
+                               
+                               mean_limb = tril(limb);
+                               mean_limb(mean_limb==0) = nan;
+
+                              % s=mean(half_default(logical(triu(ones(size(half_default))))))
+
+                               mean_limb = mean(mean_limb,'omitnan');
+                               mean_limb = mean_limb(~isnan(mean_limb));
+                               mean_limb = mean(mean_limb);
+                               mean_limb_all(subjind,:) = mean_limb;         
+                               
+%                                [~, mod] = modularity_und(limb);
+%                                modul_limb(subjind,:) = mod;
+%% Mean within connectivity                               
+                               within = [mean_default,mean_dorsal,mean_salven, mean_sommot,mean_cont,mean_vis,mean_limb];
+                               mean_within = mean(within);
+                               mean_within_all(subjind,:) = mean_within;   
+                               
+                               
+                               %% CONNECTIVITY BETWEEN NETWORKS
+                               
+                               
+                               
+                               
+                                  if absolute_values
+
+                                     target_dir_bet = [hchs_dir, '/fMRI_resting/results_200_7/mean_36_abs_' num2str(thresh) '/between_net'];
+                                  else
+
+                                     target_dir_bet = [hchs_dir, '/fMRI_resting/results_200_7/mean_36_' num2str(thresh) '/between_net'];
+
+                                  end
+                                         %%  extracting default and rest connectivity
+                                         
+                                           mat_index = (1:1:200); % Alle Rois abbilden
+                                          
+                                           % Rois specific for networks                                           
+                                           default_lh = (74:100);  
+                                           default_rh = (182:200); 
+                                           
+                                           default_index = [default_lh,default_rh]; 
+
+%                                            dorsal_lh = (31:43); % 
+%                                            dorsal_rh = (135:147);   
+
+                                            rest_lh = (1:73); % 
+                                            rest_rh = (101:181);
+
+                                           rest_index = [ rest_lh, rest_rh]; %
+                                           
+                                           default_rest_index = [default_index,rest_index];
+                                          
+
+                                           default_rest = Mat(default_index, rest_index); % Extraktion für die mean connectivity zwischen den netzwerken
+                                           
+                                           
+                                           default_rest_mat = Mat;    
+                                           mat_index(default_rest_index) = []; %löschen der Indices für default
+                                           
+                                              % Deleting all connections other than these to networks
+
+                                           default_rest_mat(mat_index,:) = 0; % alle anderen Indices in der Matrix auf 0 setzen
+                                           default_rest_mat(:,mat_index) = 0;% alle anderen Indices in der Matrix auf 0 setzen
+                                           default_rest_mat(default_index,default_index) = 0;
+                                           default_rest_mat(rest_index,rest_index) = 0;
+
+
+                                           mean_default_rest_mat = tril(default_rest_mat); % for calculating mean only half of the matrix 
+                                           mean_default_rest_mat(mean_default_rest_mat==0) = nan;
+                                           
+                                           mean_default_rest_mat = mean(mean_default_rest_mat,'omitnan'); % calculating mean for each column
+                                           mean_default_rest_mat = mean_default_rest_mat(~isnan(mean_default_rest_mat)); % excluding columns with nan result 
+                                           mean_default_rest_mat = mean(mean_default_rest_mat); 
+                                           
+                                           default_betw_all(subjind,:) = mean_default_rest_mat;
+% 
+
+
+
+                                           
+
+                                       
+                                       %%  extracting dorsal and rest connectivity
+                                           mat_index = (1:1:200); % Alle Rois abbilden
+                                          
+                                           % Rois specific for networks                                           
+                                           dorsal_lh = (31:43); % 
+                                           dorsal_rh = (135:147);   
+                                           
+                                           dorsal_index = [dorsal_lh,dorsal_rh]; 
+
+                                            rest_1 = (1:30); % 
+                                            rest_2 = (44:146);
+                                            rest_3 = (147:200);
+                                            
+                                           rest_index = [ rest_1, rest_2,rest_3]; %
+                                           
+                                           dorsal_rest_index = [dorsal_index,rest_index];
+                                          
+
+                                           dorsal_rest = Mat(dorsal_index, rest_index); % Extraktion für die mean connectivity zwischen den netzwerken
+                                           
+                                           
+                                           dorsal_rest_mat = Mat;    
+                                           mat_index(dorsal_rest_index) = []; %löschen der Indices für default
+                                           
+                                     % Deleting all connections other than these to networks
+
+                                           dorsal_rest_mat(mat_index,:) = 0; % alle anderen Indices in der Matrix auf 0 setzen
+                                           dorsal_rest_mat(:,mat_index) = 0;% alle anderen Indices in der Matrix auf 0 setzen
+                                           dorsal_rest_mat(dorsal_index,dorsal_index) = 0;
+                                           dorsal_rest_mat(rest_index,rest_index) = 0;
+
+
+                                           mean_dorsal_rest_mat = tril(dorsal_rest_mat); % for calculating mean only half of the matrix 
+                                           mean_dorsal_rest_mat(mean_dorsal_rest_mat==0) = nan;
+                                           
+                                           mean_dorsal_rest_mat = mean(mean_dorsal_rest_mat,'omitnan'); % calculating mean for each column
+                                           mean_dorsal_rest_mat = mean_dorsal_rest_mat(~isnan(mean_dorsal_rest_mat)); % excluding columns with nan result 
+                                           mean_dorsal_rest_mat = mean(mean_dorsal_rest_mat); 
+                                           
+                                           dorsal_betw_all(subjind,:) = mean_dorsal_rest_mat;
+                                                                                
+                                                                         
+
+
+                                
+
+
+
+                                       %%  extracting salven and rest connectivity
+                                       
+                                           mat_index = (1:1:200);
+                                           
+                                           salven_lh = (44:54); % 
+                                           salven_rh = (148:158);
+                                           
+                                           salven_index = [salven_lh,salven_rh];  
+                                               
+                                           rest_1 = (1:43); % 
+                                           rest_2 = (55:147);
+                                           rest_3 = (159:200);
+
+                                           rest_index = [ rest_1, rest_2,rest_3]; 
+                                           
+                                           salven_rest_index = [salven_index,rest_index];                                            
+                                           salven_rest = Mat(salven_index, rest_index);
+                                                                                     
+           
+                                           salven_rest_mat = Mat;
+                                           mat_index(salven_rest_index) = []; %löschen der Indices für salven
+
+                                           salven_rest_mat(mat_index,:) = 0; % alle anderen Indices in der Matrix auf 0 setzen
+                                           salven_rest_mat(:,mat_index) = 0; 
+                                           salven_rest_mat(salven_index,salven_index) = 0;
+                                           salven_rest_mat(rest_index,rest_index) = 0;                                              
+
+                                           
+                                                                                      
+                                           mean_salven_rest_mat = tril(salven_rest_mat); % for calculating mean only half of the matrix 
+                                           mean_salven_rest_mat(mean_salven_rest_mat==0) = nan;
+                                           
+                                           mean_salven_rest_mat = mean(mean_salven_rest_mat,'omitnan'); % calculating mean for each column
+                                           mean_salven_rest_mat = mean_salven_rest_mat(~isnan(mean_salven_rest_mat)); % excluding columns with nan result 
+                                           mean_salven_rest_mat = mean(mean_salven_rest_mat);  
+                                           
+                                           salven_betw_all(subjind,:)  = mean_salven_rest_mat;
+                                           
+                                  
+                             
+
+
+                                        %%  extracting sommot and rest connectivity
+                                          
+                                           mat_index = (1:1:200);
+                                           
+                                           
+                                           sommot_lh = (15:30); % 
+                                           sommot_rh = (116:134);  
+                                           
+                                           sommot_index = [sommot_lh,sommot_rh];  
+                                           
+                                           
+                                           rest_1 = (1:14); % 
+                                           rest_2 = (31:115);
+                                           rest_3 = (135:200);
+
+                                           rest_index = [ rest_1, rest_2,rest_3]; 
+                                           
+                                           sommot_rest_index = [sommot_index,rest_index];                                           
+                                           sommot_rest = Mat(sommot_index, rest_index);
+                                                                                      
+                                                                                      
+                                           sommot_rest_mat = Mat;
+                                           mat_index(sommot_rest_index) = []; %löschen der Indices für default
+
+                                           sommot_rest_mat(mat_index,:) = 0; % alle anderen Indices in der Matrix auf 0 setzen
+                                           sommot_rest_mat(:,mat_index) = 0; 
+                                           sommot_rest_mat(sommot_index,sommot_index) = 0;
+                                           sommot_rest_mat(rest_index,rest_index) = 0;  
+                                                                                                                                                                            
+                                           mean_sommot_rest_mat = tril(sommot_rest_mat); % for calculating mean only half of the matrix 
+                                           mean_sommot_rest_mat(mean_sommot_rest_mat==0) = nan;
+                                           
+                                           mean_sommot_rest_mat = mean(mean_sommot_rest_mat,'omitnan');% calculating mean for each column
+                                           mean_sommot_rest_mat = mean_sommot_rest_mat(~isnan(mean_sommot_rest_mat)); % excluding columns with nan result 
+                                           mean_sommot_rest_mat = mean(mean_sommot_rest_mat);    
+                                           
+                                           sommot_betw_all(subjind,:)  = mean_sommot_rest_mat;
+                                
+
+
+
+
+                                  
+
+                                      %%  extracting cont and rest connectivity
+                                        
+                                           mat_index = (1:1:200);
+                                           
+                                           
+                                           cont_lh = (61:73); % 
+                                           cont_rh = (165:181);                                            
+
+                                           cont_index = [cont_lh,cont_rh];  
+                                           
+                                           
+                                           rest_1 = (1:60); % 
+                                           rest_2 = (74:164);
+                                           rest_3 = (182:200);
+
+                                           rest_index = [ rest_1, rest_2,rest_3];                                            
+                                           
+                                           
+                                           cont_rest_index = [cont_index,rest_index];   
+                                           cont_rest = Mat(cont_index, rest_index);
+                                                                                     
+
+                                           
+                                           cont_rest_mat = Mat;
+                                           mat_index(cont_rest_index) = []; %löschen der Indices für default
+                  
+                                           cont_rest_mat(mat_index,:) = 0; % alle anderen Indices in der Matrix auf 0 setzen
+                                           cont_rest_mat(:,mat_index) = 0;  
+                                           cont_rest_mat(cont_index,cont_index) = 0;
+                                           cont_rest_mat(rest_index,rest_index) = 0;  
+
+                                           
+                                           mean_cont_rest_mat = tril(cont_rest_mat); % for calculating mean only half of the matrix 
+                                           mean_cont_rest_mat(mean_cont_rest_mat==0) = nan;
+                                           
+                                           mean_cont_rest_mat = mean(mean_cont_rest_mat,'omitnan');% calculating mean for each column
+                                           mean_cont_rest_mat = mean_cont_rest_mat(~isnan(mean_cont_rest_mat)); % excluding columns with nan result 
+                                           mean_cont_rest_mat = mean(mean_cont_rest_mat);  
+                                           
+                                           cont_betw_all(subjind,:)  = mean_cont_rest_mat;
+                                          
+
+
+
+
+
+
+
+                                       %%  extracting vis and rest connectivity
+                                           
+                                          
+                                           mat_index = (1:1:200); 
+                                           
+                                           vis_lh = (1:14); % 
+                                           vis_rh = (101:115); 
+
+                                           vis_index = [vis_lh,vis_rh];                                            
+                                           
+                                           rest_1 = (15:100); % 
+                                           rest_2 = (116:200);
+      
+
+                                           rest_index = [ rest_1, rest_2];                                               
+                                           
+                                           
+                                           vis_rest_index = [vis_index,rest_index]; 
+                                           vis_rest = Mat(vis_index, rest_index);
+                                                                                      
+                                           
+                                           vis_rest_mat = Mat;
+                                           mat_index(vis_rest_index) = []; %löschen der Indices für default
+
+                                           vis_rest_mat(mat_index,:) = 0; % alle anderen Indices in der Matrix auf 0 setzen
+                                           vis_rest_mat(:,mat_index) = 0;  
+                                           vis_rest_mat(vis_index,vis_index) = 0;
+                                           vis_rest_mat(rest_index,rest_index) = 0;  
+                                           
+                                           mean_vis_rest_mat = tril(vis_rest_mat); % for calculating mean only half of the matrix 
+                                           mean_vis_rest_mat(mean_vis_rest_mat==0) = nan;
+                                           
+                                           mean_vis_rest_mat = mean(mean_vis_rest_mat,'omitnan'); % calculating mean for each column
+                                           mean_vis_rest_mat = mean_vis_rest_mat(~isnan(mean_vis_rest_mat)); % excluding columns with nan result 
+                                           mean_vis_rest_mat = mean(mean_vis_rest_mat);                                             
+                                           
+                                           vis_betw_all(subjind,:)  = mean_vis_rest_mat;
+                                         
+
+                                     %%  extracting limb and rest connectivity
+                                           
+                                          
+                                           mat_index = (1:1:200); 
+                                           
+                                           limb_lh = (55:60); % 
+                                           limb_rh = (159:164); 
+
+                                           limb_index = [limb_lh,limb_rh]; %                                           
+                                           
+                                           rest_1 = (1:54); % 
+                                           rest_2 = (61:158);
+                                           rest_3 = (165:200);
+
+                                           rest_index = [ rest_1, rest_2,rest_3];                                               
+                                           
+                                           
+                                           limb_rest_index = [limb_index,rest_index]; 
+                                           limb_rest = Mat(limb_index, rest_index);
+                                                                                      
+                                           
+                                           limb_rest_mat = Mat;
+                                           mat_index(limb_rest_index) = []; %löschen der Indices für default
+
+                                           limb_rest_mat(mat_index,:) = 0; % alle anderen Indices in der Matrix auf 0 setzen
+                                           limb_rest_mat(:,mat_index) = 0;  
+                                           limb_rest_mat(vis_index,vis_index) = 0;
+                                           limb_rest_mat(rest_index,rest_index) = 0;  
+                                           
+                                           mean_limb_rest_mat = tril(limb_rest_mat); % for calculating mean only half of the matrix 
+                                           mean_limb_rest_mat(mean_limb_rest_mat==0) = nan;
+                                           
+                                           mean_limb_rest_mat = mean(mean_limb_rest_mat,'omitnan');  % calculating mean for each column
+                                           mean_limb_rest_mat = mean_limb_rest_mat(~isnan(mean_limb_rest_mat)); % excluding columns with nan result 
+                                           mean_limb_rest_mat = mean(mean_limb_rest_mat);                                             
+                                           
+                                           limb_betw_all(subjind,:)  = mean_limb_rest_mat;
+                                                                                                  
+%% mean between connecitivity for all networks
+
+% for all networks
+
+                                           global_between = [mean_default_rest_mat,mean_dorsal_rest_mat,mean_salven_rest_mat  ...
+                                                      mean_sommot_rest_mat,mean_cont_rest_mat,mean_vis_rest_mat,mean_limb_rest_mat];
+                                                  
+                                           mean_global_between =  mean(global_between);          
+                                           mean_global_between_all(subjind,:) = mean_global_between; 
+                                           
+%% mean within connecitivity for all networks
+
+                                           global_within = [mean_default,mean_dorsal,mean_salven  ...
+                                                      mean_sommot,mean_cont,mean_vis,mean_limb];
+                                                  
+                                           mean_global_within =  mean(global_within);          
+                                           mean_global_within_all(subjind,:) = mean_global_within; 
+
+%% Segregation Coefficient
+   % single networks                     
+                    seg_default = mean_default - mean_default_rest_mat;
+                    seg_default = seg_default ./ mean_default;
+                    seg_default_all(subjind,:) = seg_default; 
+                    
+                    seg_dorsal = mean_dorsal - mean_dorsal_rest_mat;
+                    seg_dorsal = seg_dorsal ./ mean_dorsal;
+                    seg_dorsal_all(subjind,:) = seg_dorsal; 
+                    
+                    seg_salven = mean_salven - mean_salven_rest_mat;
+                    seg_salven = seg_salven ./ mean_salven;
+                    seg_salven_all(subjind,:) = seg_salven;
+                                        
+                    seg_sommot = mean_sommot - mean_sommot_rest_mat;
+                    seg_sommot = seg_sommot ./ mean_sommot;
+                    seg_sommot_all(subjind,:) = seg_sommot; 
+
+                    seg_cont = mean_cont - mean_cont_rest_mat;
+                    seg_cont = seg_cont ./ mean_cont;
+                    seg_cont_all(subjind,:) = seg_cont; 
+                    
+                    seg_vis = mean_vis - mean_vis_rest_mat;
+                    seg_vis = seg_vis ./ mean_vis;
+                    seg_vis_all(subjind,:) = seg_vis;                     
+                    
+                    seg_limb = mean_limb - mean_limb_rest_mat;
+                    seg_limb = seg_limb ./ mean_limb;
+                    seg_limb_all(subjind,:) = seg_limb;   
+                    
+% Segregation global
+                    seg_global = [seg_default, seg_dorsal, seg_salven, seg_sommot, seg_cont, seg_vis, seg_limb];
+                    seg_global = mean(seg_global);
+                    seg_global_all(subjind,:) = seg_global; 
+                    
+% Segregation association
+                    seg_asso = [seg_default, seg_dorsal, seg_salven, seg_sommot, seg_cont,seg_limb];
+                    seg_asso = mean(seg_asso);
+                    seg_asso_all(subjind,:) = seg_asso; 
+
+% Segregation sensory
+                    seg_sensor = [seg_sommot,seg_vis];
+                    seg_sensor = mean(seg_sensor);
+                    seg_sensor_all(subjind,:) = seg_sensor; 
+                                        
+                                        
+              end
+  
+                    mkdir (target_dir_with)
+                    mkdir (target_dir_bet)  
+                    mkdir (target_dir_3d)
+
+                    % Saving mean within connetivity networks                   
+                    save([target_dir_3d '/default_all'],'default_all');
+                    save([target_dir_3d '/dorsal_all'],'dorsal_all');
+                    save([target_dir_3d '/salven_all'],'salven_all');
+                    save([target_dir_3d '/sommot_all'],'sommot_all');
+                    save([target_dir_3d '/cont_all'],'cont_all');
+                    save([target_dir_3d '/conn_all'],'conn_all');
+                   
+                    save([target_dir_3d '/vis_all'],'vis_all');
+                    save([target_dir_3d '/limb_all'],'limb_all');
+
+                    % Saving mean within connetivity networks                   
+                    save([target_dir_with '/mean_default'],'mean_default_all');
+                    save([target_dir_with '/mean_dorsal'],'mean_dorsal_all');
+                    save([target_dir_with '/mean_salven'],'mean_salven_all');
+                    save([target_dir_with '/mean_sommon'],'mean_sommon_all');
+                    save([target_dir_with '/mean_cont'],'mean_cont_all');
+                    save([target_dir_with '/mean_conn'],'mean_conn_all');
+                   
+                    save([target_dir_with '/mean_vis'],'mean_vis_all');
+                    save([target_dir_with '/mean_limb'],'mean_limb_all');
+                   
+                    save([target_dir_with '/mean_global_within'],'mean_global_within_all');
+                    
+
+                    % Saving mean between connectivity of networks
+                    save([target_dir_bet  '/mean_default_between'],'default_betw_all');
+                    save([target_dir_bet  '/mean_dorsal_between'],'dorsal_betw_all');
+                    save([target_dir_bet  '/mean_salven_between'],'salven_betw_all');
+                    save([target_dir_bet  '/mean_sommot_between'],'sommot_betw_all');
+                    save([target_dir_bet  '/mean_cont_between'],'cont_betw_all');
+                   
+                    save([target_dir_bet  '/mean_vis_between'],'vis_betw_all');
+                    save([target_dir_bet  '/mean_limb_between'],'limb_betw_all');
+                                      
+                    save([target_dir_bet  '/mean_global_between'],'mean_global_between_all');     
+                    
+                    % Saving segregation of networks
+                    save([target_dir_bet  '/mean_seg_default'],'seg_default_all');
+                    save([target_dir_bet  '/mean_seg_dorsal'],'seg_dorsal_all');
+                    save([target_dir_bet  '/mean_seg_salven'],'seg_salven_all');
+                    save([target_dir_bet  '/mean_seg_sommot'],'seg_sommot_all');
+                    save([target_dir_bet  '/mean_seg_cont'],'seg_cont_all');
+                    
+                    save([target_dir_bet  '/mean_seg_vis'],'seg_vis_all');
+                    save([target_dir_bet  '/mean_seg_limb'],'seg_limb_all');
+                    
+                    % Saving segregation global
+                    save([target_dir_bet  '/mean_seg_global'],'seg_global_all');
+                    save([target_dir_bet  '/mean_seg_asso'],'seg_asso_all');
+                    save([target_dir_bet  '/mean_seg_sensor'],'seg_sensor_all');
+
+
+      end

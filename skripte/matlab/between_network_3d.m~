@@ -1,0 +1,166 @@
+%% General settings
+hchs_dir = '/home/share/rawdata/Max/HCHS/analysis';
+conn_dir = [hchs_dir, '/fMRI_resting/conn_mat/aroma_matrix'];
+target_dir = [hchs_dir, '/fMRI_resting/conn_mat/3d_aroma/3d_0'];
+% default_dorsal_mean = zeros(46,26,987);
+% default_salven_mean = zeros(:,:,987);
+% default_sommot_mean = zeros(:,:,987);
+% default_cont_mean   = zeros(:,:,987);
+% default_vis_mean    = zeros(:,:,987);
+broken_subjects = 'sub-2016203f_schaefer200x7_network.mat'
+
+%% Sorting Subjects
+        mkdir(target_dir)
+        cd(conn_dir)
+        
+            all_subjects_str = ls(conn_dir);
+            all_subjects     = strsplit(all_subjects_str);
+            
+            for i = 1:length(all_subjects);
+                csubj = all_subjects{i}; 
+            if ~isempty(regexp(broken_subjects, csubj, 'once'))
+                all_subjects{i} = [];
+            elseif isempty(regexp(csubj, 'sub', 'once')) 
+                all_subjects{i} = [];
+            end
+            end 
+
+all_subjects = all_subjects(~cellfun('isempty', all_subjects));
+all_subjects = sort(all_subjects);
+
+conn = nan(200,200,length(all_subjects));
+%% Loop through Subjects
+
+
+  for subjind = 1:length(all_subjects)
+                    
+                subject = all_subjects{subjind};
+                load([conn_dir '/' subject]);
+                
+                    m = mean(Mat);
+                    conn(:,:,subjind) = Mat;
+                    mean_conn = mean(conn,3) ;
+                
+                
+                
+                
+                
+                     
+                 %%  extracting default and dorsal connectivity
+                 
+                   default_lh = (74:100); % 
+                   default_rh = (182:200); 
+                   %
+                   default_index = [default_lh,default_rh]; 
+                   
+                   dorsal_lh = (31:43); % 
+                   dorsal_rh = (135:147);   
+                   
+                   dorsal_index = [ dorsal_lh, dorsal_rh]; %
+                  
+                   
+                   default_dorsal = mean_conn(default_index, dorsal_index);
+                   
+                   
+              
+                  
+
+                   
+                %%  extracting default and salven connectivity
+                 
+                   default_lh = (74:100); % 
+                   default_rh = (182:200); 
+                   %
+                   default_index = [default_lh,default_rh]; 
+                   
+                   salven_lh = (44:54); % 
+                   salven_rh = (148:158);  
+                   
+                   salven_index = [salven_lh,salven_rh]; %
+                   
+                  
+                   
+                   default_salven = mean_conn(default_index, salven_index);
+                                
+                  
+
+                   
+                %%  extracting default and sommot connectivity
+                 
+                   default_lh = (74:100); % 
+                   default_rh = (182:200); 
+                   %
+                   default_index = [default_lh,default_rh]; 
+                   
+                   sommot_lh = (15:30); % 
+                   sommot_rh = (116:134);  
+                   
+                   sommot_index = [ sommot_lh, sommot_rh]; %%
+                               
+                   
+                   default_sommot = mean_conn(default_index, sommot_index);
+                                  
+                                
+
+                   
+               %%  extracting default and cont connectivity
+                 
+                   default_lh = (74:100); % 
+                   default_rh = (182:200); 
+                   %
+                   default_index = [default_lh,default_rh]; 
+                   
+                   cont_lh = (61:73); % 
+                   cont_rh = (165:181); 
+                   
+                   cont_index = [cont_lh,cont_rh]; %%
+                   
+                   
+                   default_cont = mean_conn(default_index, cont_index);
+                  
+              
+                  
+
+                   
+               %%  extracting default and vis connectivity
+                 
+                   default_lh = (74:100); % 
+                   default_rh = (182:200); 
+                   %
+                   default_index = [default_lh,default_rh]; 
+                   
+                   vis_lh = (1:14); % 
+                   vis_rh = (101:115); 
+                   
+                   vis_index = [vis_lh,vis_rh];; %%
+                   
+                   default_vis = mean_conn(default_index, vis_index);
+                   
+
+               %%  extracting default and vis connectivity
+                 
+                   default_lh = (74:100); % 
+                   default_rh = (182:200); 
+                   %
+                   default_index = [default_lh,default_rh]; 
+                   
+                   limb_lh = (55:68); % 
+                   limb_rh = (159:164); 
+                   
+                   limb_index = [limb_lh,limb_rh]; %%
+                   
+                   default_limb_mean = nan(46,20,987);
+                   
+                   default_limb = mean_conn(default_index, limb_index);                              
+
+  end
+  
+  
+                   save([target_dir '/default_dorsal_3d'],'default_dorsal');
+                   save([target_dir '/default_salven_3d'],'default_salven');
+                   save([target_dir '/default_sommot_3d'],'default_sommot');
+                   save([target_dir '/default_cont_3d'],'default_cont');
+                   save([target_dir '/default_vis_3d'],'default_vis');
+                   save([target_dir '/default_limb_3d'],'default_limb');
+              
+   

@@ -1,0 +1,55 @@
+
+%% General settings
+hchs_dir = '/home/share/rawdata/Max/HCHS/analysis';
+main_dir = [hchs_dir, '/fMRI_resting/conn_mat/aroma'];
+conn_dir = [hchs_dir, '/fMRI_resting/conn_mat/mean_aroma'];
+target_dir = [hchs_dir, '/csv_for_R'];
+main_txt_path = [hchs_dir '/sozio_data'];
+
+
+%% Sorting Subjects
+
+%         mkdir(target_dir)
+%         cd(main_dir)
+        
+            all_subjects_str = ls(main_dir);
+            all_subjects     = strsplit(all_subjects_str);
+            
+            for i = 1:length(all_subjects);
+                     csubj = all_subjects{i};         
+                  if isempty(regexp(csubj, 'sub', 'once')) 
+                     all_subjects{i} = [];
+                 end
+            end 
+
+        all_subjects = all_subjects(~cellfun('isempty', all_subjects));
+        all_subjects = sort(all_subjects);
+
+
+%% Load Data
+
+        tbl = readtable([main_txt_path '/WML.dat'])
+        wml = tbl.WML
+     %   wml = num2cell(wml)
+        id  = tbl.ID        
+        %load([conn_dir '/mean_conn.mat'])
+        load([conn_dir '/mean_36p.mat'])
+       % mean_conn = num2cell(mean_conn)
+        all_val = table(id,wml,mean_conn)
+        
+ %% Change to Table
+ 
+%         writetable(all_val,[target_dir '/HCHS_conn.csv'])
+%         save([target_dir '/all_val', 'all_val'])
+        
+        writetable(all_val,[target_dir '/HCHS_conn_36p.csv'])
+        save([target_dir '/all_val', 'all_val'])
+        
+        
+
+
+
+% cell_whole_hdr = [{'ID' 'C' 'WML'}];
+
+
+   

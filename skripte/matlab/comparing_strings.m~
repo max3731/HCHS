@@ -1,0 +1,67 @@
+
+%% General Settings
+
+hchs_dir = '/home/share/rawdata/Max/HCHS/analysis';
+aroma_dir = [hchs_dir, '/fMRI_resting/conn_mat/aroma'];
+p36_dir = [hchs_dir, '/fMRI_resting/conn_mat/36p'];
+p36_spkreg_dir = [hchs_dir, '/fMRI_resting/conn_mat/36p_spkreg'];
+
+
+
+
+%% Aroma String
+
+   cd(aroma_dir)
+        
+            all_subjects_str_aroma = ls(aroma_dir);
+            all_subjects_aroma     = strsplit(all_subjects_str_aroma);
+            
+       for i = 1:length(all_subjects_aroma);
+                        csubj = all_subjects_aroma{i};         
+            if isempty(regexp(csubj, 'sub', 'once')) 
+                        all_subjects_aroma{i} = [];
+            end
+        end 
+
+            all_subjects_aroma = all_subjects_aroma(~cellfun('isempty', all_subjects_aroma));
+            all_subjects_aroma = sort(all_subjects_aroma);
+            
+            
+%% 36p String
+
+   cd(p36_dir)
+        
+            all_subjects_str_36p= ls(p36_dir);
+            all_subjects_36p    = strsplit(all_subjects_str_36p );
+            
+       for i = 1:length(all_subjects_36p);
+                        csubj = all_subjects_36p{i};         
+            if isempty(regexp(csubj, 'sub', 'once')) 
+                        all_subjects_36p{i} = [];
+            end
+        end 
+
+            all_subjects_36p = all_subjects_36p(~cellfun('isempty', all_subjects_36p));
+            all_subjects_36p = sort(all_subjects_36p);
+            
+            
+            
+ %% 36p_spkreg String
+
+   cd(p36_dir)
+        
+            all_subjects_str_36p= ls(p36_dir);
+            all_subjects_36p    = strsplit(all_subjects_str_36p );
+            
+       for i = 1:length(all_subjects_36p);
+                        csubj = all_subjects_36p{i};         
+            if isempty(regexp(csubj, 'sub', 'once')) 
+                        all_subjects_36p{i} = [];
+            end
+        end 
+
+            all_subjects_36p = all_subjects_36p(~cellfun('isempty', all_subjects_36p));
+            all_subjects_36p = sort(all_subjects_36p);
+            
+            
+            

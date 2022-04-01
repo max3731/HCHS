@@ -1,0 +1,39 @@
+
+
+%% General settings
+hchs_dir = '/home/share/rawdata/Max/HCHS/analysis';
+main_dir = [hchs_dir, '/fMRI_resting/conn_mat/aroma_mat'];
+target_dir = [hchs_dir, '/fMRI_resting/conn_mat/mean_aroma'];
+
+main_dir = [hchs_dir, '/fMRI_resting/conn_mat/36p'];
+target_dir = [hchs_dir, '/fMRI_resting/conn_mat/mean_aroma'];
+
+
+        mean_conn = []
+        mkdir(target_dir)
+        cd(main_dir)
+        
+            all_subjects_str = ls(main_dir);
+            all_subjects     = strsplit(all_subjects_str);
+            
+            for i = 1:length(all_subjects);
+                csubj = all_subjects{i};         
+            if isempty(regexp(csubj, 'sub', 'once')) 
+                all_subjects{i} = [];
+            end
+            end 
+
+all_subjects = all_subjects(~cellfun('isempty', all_subjects));
+all_subjects = sort(all_subjects);
+
+             
+                for subjind = 1:length(all_subjects)
+                    
+                    subject = all_subjects{subjind};
+                    load([main_dir '/' subject]);
+                    m = mean(M);
+                    mean_conn(subjind,:) = m;
+                end
+                
+                 save([target_dir '/mean_all_subs'],'mean_conn');
+                    
